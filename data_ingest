@@ -1,0 +1,129 @@
+# ============================================================
+# Google Sheets Ingest Script
+# Source: NCAA / Athletic Stats Workbook (2022–2025)
+# ============================================================
+
+library(googlesheets4)
+library(dplyr)
+library(purrr)
+library(stringr)
+
+# ------------------------------------------------------------
+# 1. Authenticate
+# ------------------------------------------------------------
+gs4_auth()
+
+# ------------------------------------------------------------
+# 2. Configuration
+# ------------------------------------------------------------
+sheet_url <- "https://docs.google.com/spreadsheets/d/1YTd-V3mQgiiYExXjssISjLQru0PqwYzQACZiDRRi884"
+
+years   <- 2022:2025
+seasons <- c("Spring", "Fall")
+
+tab_names <- expand.grid(season = seasons, year = years) |>
+  arrange(year, season) |>
+  mutate(tab = paste(season, year)) |>
+  pull(tab)
+
+# ------------------------------------------------------------
+# 3. Read Glossary (column header reference)
+# ------------------------------------------------------------
+glossary <- read_sheet(sheet_url, sheet = "Glossary") |>
+  select(col_head = col_head, stat_name = `Stat Name`) |>
+  filter(!is.na(col_head))
+
+cat("Glossary loaded:", nrow(glossary), "column definitions\n")
+
+# ------------------------------------------------------------
+# 4. Safe reader — returns NULL on failure instead of erroring
+# ------------------------------------------------------------
+safe_read <- possibly(read_sheet, otherwise = NULL)
+
+read_tab <- function(tab) {
+  message("Reading: ", tab)
+  
+  result <- safe_read(sheet_url, sheet = tab)
+  
+  if (is.null(result)) {
+    warning("  !! Failed to read tab: ", tab)
+    return(NULL)
+  }
+  
+  if (nrow(result) == 0) {
+    warning("  !! Tab is empty: ", tab)
+    return(NULL)
+  }
+  
+  result |>
+    mutate(
+      source_tab = tab,
+      season     = str_extract(tab, "^\\w+"),
+      year       = as.integer(str_extract(tab, "\\d{4}")),
+      .before    = 1
+    )
+}
+
+# ------------------------------------------------------------
+# 5. Read all tabs and stack into one data frame
+#    list_rbind() fills missing columns with NA automatically
+# ------------------------------------------------------------
+combined_df <- tab_names |>
+  map(read_tab) |>
+  compact() |>        # drop NULLs from failed/empty tabs
+  list_rbind()
+
+cat("\nIngestion complete!\n")
+cat("  Tabs successfully read:", length(unique(combined_df$source_tab)), "\n")
+cat("  Total rows:           ", nrow(combined_df), "\n")
+cat("  Total columns:        ", ncol(combined_df), "\n")
+
+# ------------------------------------------------------------
+# 6. Attach full stat names from glossary as a named vector
+#    (useful for plot labels, table headers, etc.)
+# ------------------------------------------------------------
+col_label <- glossary |>
+  filter(col_head %in% names(combined_df)) |>
+  deframe()   # creates named vector: col_label["pts"] -> "Points"
+
+# Example use:
+#   col_label["pts"]          # returns full stat name
+#   col_label[names(data)]    # renames columns in bulk
+
+# ------------------------------------------------------------
+# 7. Quick diagnostics — see which columns appear in which tabs
+# ------------------------------------------------------------
+coverage <- combined_df |>
+  group_by(source_tab) |>
+  summarise(
+    rows         = n(),
+    cols_present = sum(sapply(pick(everything()), \(x) !all(is.na(x)))),
+    .groups      = "drop"
+  )
+
+print(coverage)
+
+# Optional: see exactly which columns are missing per tab
+column_coverage <- tab_names |>
+  map_dfr(\(tab) {
+    tab_data <- combined_df |> filter(source_tab == tab)
+    tibble(
+      tab     = tab,
+      col     = names(combined_df),
+      present = sapply(combined_df |> filter(source_tab == tab),
+                       \(x) !all(is.na(x)))
+    )
+  }) |>
+  filter(!col %in% c("source_tab", "season", "year"))
+
+missing_by_tab <- column_coverage |>
+  filter(!present) |>
+  group_by(tab) |>
+  summarise(missing_cols = paste(col, collapse = ", "), .groups = "drop")
+
+if (nrow(missing_by_tab) > 0) {
+  cat("\nColumns absent (all-NA) per tab:\n")
+  print(missing_by_tab)
+} else {
+  cat("\nAll columns present across all tabs.\n")
+}
