@@ -812,6 +812,8 @@ html <- paste0(chunk1, data_json, chunk2, seasons_json, chunk3, alltime_json, ch
 
 output_path <- "SWAT_Boys_Dashboard.html"
 writeLines(html, output_path, useBytes = TRUE)
+output_index <- "index.html"
+writeLines(html, output_index, useBytes = TRUE)
 
 cat("\n Dashboard written to:", normalizePath(output_path), "\n")
 cat(" File size:", round(file.size(output_path) / 1024, 1), "KB\n")
