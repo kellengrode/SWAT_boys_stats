@@ -1,3 +1,20 @@
+# ============================================================
+# SWAT Boys — Self-Contained Interactive HTML Dashboard
+# ============================================================
+# Requirements: jsonlite, dplyr, stringr
+# install.packages(c("jsonlite", "dplyr", "stringr"))
+
+library(jsonlite)
+library(dplyr)
+library(stringr)
+library(base64enc)
+
+# Encode logo as base64 for self-contained HTML embedding
+logo_src <- if (file.exists("/Users/kellengrode/Desktop/projects/SWAT_boys_stats/SWAT_boys_logo.jpeg")) {
+  paste0("data:image/jpeg;base64,", base64encode("SWAT_boys_logo.jpeg"))
+} else {
+  ""   # no logo if file not found — header text still renders fine
+}
 
 # ------------------------------------------------------------
 # 0. Run data ingest if data is stale (older than 7 days)
@@ -30,17 +47,6 @@ if (needs_refresh) {
   saveRDS(combined_df, cache_file)
   message("Ingest complete. Cache saved to: ", normalizePath(cache_file))
 }
-
-# ============================================================
-# SWAT Boys — Self-Contained Interactive HTML Dashboard
-# v3: All-Time tab, removed SB, Miami Dolphins color scheme
-# ============================================================
-# Requirements: jsonlite, dplyr, stringr
-# install.packages(c("jsonlite", "dplyr", "stringr"))
-
-library(jsonlite)
-library(dplyr)
-library(stringr)
 
 # ------------------------------------------------------------
 # 1. Prepare per-season data
@@ -173,7 +179,9 @@ chunk1 <- r"[<!DOCTYPE html>
     display:flex;align-items:center;justify-content:space-between;height:56px;
     position:sticky;top:0;z-index:100;}
   .logo{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:20px;
-    letter-spacing:0.06em;color:var(--orange);text-transform:uppercase;}
+    letter-spacing:0.06em;color:var(--orange);text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;}
+  .logo img{height:38px;width:auto;object-fit:contain;flex-shrink:0;}
   .logo span{color:var(--blue2);font-weight:400;}
   .header-badge{font-family:"DM Mono",monospace;font-size:11px;color:var(--muted);
     background:var(--bg3);border:1px solid var(--border);padding:4px 10px;border-radius:4px;}
@@ -222,7 +230,9 @@ chunk1 <- r"[<!DOCTYPE html>
   .stat-table-wrap{overflow-x:auto;}
   .stat-table{width:100%;border-collapse:collapse;font-size:12px;}
   .stat-table th{font-family:"DM Mono",monospace;font-size:10px;letter-spacing:0.07em;
-    color:var(--muted);text-align:right;padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+    color:var(--muted);text-align:right;padding:6px 10px;border-bottom:1px solid var(--border);
+    white-space:nowrap;cursor:pointer;user-select:none;}
+  .stat-table th:hover{color:var(--orange);}
   .stat-table th:first-child{text-align:left;}
   .stat-table td{text-align:right;padding:6px 10px;color:var(--muted);
     border-bottom:1px solid rgba(0,141,185,0.07);white-space:nowrap;
@@ -253,7 +263,7 @@ chunk1 <- r"[<!DOCTYPE html>
   /* RBI / LEADER BARS */
   .rbi-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
   .rbi-name{font-size:12px;color:var(--muted);width:80px;flex-shrink:0;text-align:right;
-    overflow:visible;text-overflow:ellipsis;white-space:nowrap;padding-right:7px; }
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .rbi-track{flex:1;background:var(--bg4);border-radius:3px;height:18px;overflow:hidden;}
   .rbi-fill{height:100%;background:var(--orange);border-radius:3px;display:flex;
     align-items:center;justify-content:flex-end;padding-right:7px;}
@@ -281,8 +291,10 @@ chunk1 <- r"[<!DOCTYPE html>
 <body>
 
 <header class="site-header">
-  <div class="logo">SWAT Boys <span>Stats</span></div>
-  <div class="header-badge">Men&apos;s Softball &nbsp;&middot;&nbsp; 2022&ndash;2025</div>
+  <div class="logo"><img src="]"
+
+chunk1b <- r"[" alt="SWAT Boys logo"> SWAT Boys<span> Stats</span></div>
+  <div class="header-badge">Men&apos;s Softball &nbsp;&middot;&nbsp; 2022&ndash;2026</div>
 </header>
 
 <nav class="tab-bar">
@@ -307,7 +319,7 @@ chunk1 <- r"[<!DOCTYPE html>
       <div id="sum-rbi"></div>
     </div>
     <div class="panel">
-      <div class="panel-title">Roster &mdash; sorted by PA</div>
+      <div class="panel-title">Roster &mdash; Click header to sort</div>
       <div class="stat-table-wrap">
         <table class="stat-table" id="sum-table"></table>
       </div>
@@ -317,7 +329,7 @@ chunk1 <- r"[<!DOCTYPE html>
 
 <!-- TAB 2: ALL TIME -->
 <div id="pane-alltime" class="pane">
-  <div class="at-section-title">Career Totals &mdash; Counting Stats</div>
+  <div class="at-section-title">Career Totals </div>
   <div class="metric-grid" id="at-metrics" style="grid-template-columns:repeat(5,minmax(0,1fr));"></div>
 
   <div class="two-col">
@@ -331,9 +343,9 @@ chunk1 <- r"[<!DOCTYPE html>
     </div>
   </div>
 
-  <div class="at-section-title">Career Rate Stats &mdash; PA-Weighted Averages</div>
+  <div class="at-section-title">Career Stats </div>
   <div class="panel">
-    <div class="panel-title">Career roster &mdash; sorted by PA</div>
+    <div class="panel-title">All Time Career Stats &mdash; Click to sort</div>
     <div class="stat-table-wrap">
       <table class="stat-table" id="at-table"></table>
     </div>
@@ -348,7 +360,7 @@ chunk1 <- r"[<!DOCTYPE html>
       <select id="tl-player" onchange="renderTimeline()"></select>
     </div>
     <div class="ctrl-group">
-      <div class="ctrl-label">Stats &mdash; up to 3</div>
+      <div class="ctrl-label">Stats &mdash; Select up to 3</div>
       <div class="stat-pills" id="tl-pills"></div>
     </div>
   </div>
@@ -494,7 +506,7 @@ function renderSummary() {
     "<div class=\"m-value\">" + m.v + "</div>" +
     "<div class=\"m-sub\">"  + m.s + "</div></div>").join("");
 
-  document.getElementById("sum-rbi").innerHTML = leaderBar(rows, "RBI", 15);
+  document.getElementById("sum-rbi").innerHTML = leaderBar(rows, "RBI", 8);
 
   const cols = ["PA","AB","AVG","OBP","OPS","HR","RBI","BB","SO","QABpct"];
   const hdr  = ["PA","AB","AVG","OBP","OPS","HR","RBI","BB","SO","QAB%"];
@@ -796,10 +808,39 @@ function populateSeasons(selId) {
   el.selectedIndex = Math.max(0, SEASONS.length - 1);
 }
 
+// ── SORTABLE TABLES ──────────────────────────────────────
+function makeTableSortable(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  let lastCol = -1, asc = true;
+  table.querySelectorAll("th").forEach((th, col) => {
+    th.title = "Click to sort";
+    th.onclick = () => {
+      asc = (col === lastCol) ? !asc : true;
+      lastCol = col;
+      const rows = [...table.querySelectorAll("tr")].slice(1);
+      rows.sort((a, b) => {
+        const av = a.cells[col]?.innerText.replace(/[%—]/g, "").trim() || "";
+        const bv = b.cells[col]?.innerText.replace(/[%—]/g, "").trim() || "";
+        const an = parseFloat(av), bn = parseFloat(bv);
+        const cmp = isNaN(an) || isNaN(bn) ? av.localeCompare(bv) : an - bn;
+        return asc ? cmp : -cmp;
+      });
+      rows.forEach(r => table.appendChild(r));
+      table.querySelectorAll("th").forEach((h, i) => {
+        h.textContent = h.textContent.replace(/ [▲▼]$/, "");
+        if (i === col) h.textContent += asc ? " ▲" : " ▼";
+      });
+    };
+  });
+}
+
 populateSeasons("sum-season");
 populateSeasons("rk-season");
 initTimeline();
 renderSummary();
+makeTableSortable("sum-table");
+makeTableSortable("at-table");
 </script>
 </body>
 </html>]"
@@ -808,7 +849,8 @@ renderSummary();
 # 6. Assemble — four chunks with three JSON injections
 # ------------------------------------------------------------
 
-html <- paste0(chunk1, data_json, chunk2, seasons_json, chunk3, alltime_json, chunk4)
+# chunk1 ends before logo src; chunk1b continues after it
+html <- paste0(chunk1, logo_src, chunk1b, data_json, chunk2, seasons_json, chunk3, alltime_json, chunk4)
 
 output_path <- "SWAT_Boys_Dashboard.html"
 writeLines(html, output_path, useBytes = TRUE)
