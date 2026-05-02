@@ -21,7 +21,7 @@ gs4_auth()
 # ------------------------------------------------------------
 sheet_url <- "https://docs.google.com/spreadsheets/d/1YTd-V3mQgiiYExXjssISjLQru0PqwYzQACZiDRRi884"
 
-years   <- 2022:2025
+years   <- 2022:2026
 seasons <- c("Spring", "Fall")
 
 tab_names <- expand.grid(season = seasons, year = years) |>
