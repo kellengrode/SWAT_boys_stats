@@ -80,7 +80,7 @@ alltime_data <- dashboard_data |>
   group_by(First, Last) |>
   summarise(
     season_label   = "All Time",
-    seasons_played = n_distinct(season_label),
+    seasons_played = n_distinct(season, year),
     PA   = sum(PA,  na.rm = TRUE),
     AB   = sum(AB,  na.rm = TRUE),
     H    = sum(H,   na.rm = TRUE),
